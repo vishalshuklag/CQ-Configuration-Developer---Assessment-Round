@@ -9,7 +9,6 @@ public with sharing class TaskHelper {
    * @param closedTaskList
    */
   public static void activateAccount(List<Task> closedTaskList) {
-    System.debug('Activate Account');
     List<Account> accountsToActivate = new List<Account>();
 
     for (Task closedTask : closedTaskList) {
@@ -39,6 +38,7 @@ public with sharing class TaskHelper {
         AND AssigneeId = :contextUserId
       WITH SYSTEM_MODE
     ];
+
     return userPermissionSet.size() > 0;
   }
 }
