@@ -16,7 +16,6 @@ public with sharing class TaskTriggerHandler {
         Map<Id, Task> oldTaskMap,
         Map<Id, Task> newTaskMap
     ) {
-
         final String permissionSetName = 'CQ_Account_Admin';
 
         // ! Should we use Custom Permission Sets or CustomPermission? I'm just validating the Custom Permission set assignment, if we just need to validated this then it can be implemeted with CustomPermission
