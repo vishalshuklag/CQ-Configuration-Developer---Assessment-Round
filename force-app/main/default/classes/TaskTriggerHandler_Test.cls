@@ -7,49 +7,97 @@
 public with sharing class TaskTriggerHandler_Test {
   @testSetup
   private static void testSetup() {
-    Profile p = [
-      SELECT id
-      FROM Profile
-      WHERE Name = 'Standard User'
-    ];
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Profile p = [
+        SELECT id
+        FROM Profile
+        WHERE Name = 'Standard User'
+      ];
 
-    User activationUser = new user(
-      alias = 'test123',
-      email = 'test123@noemail.com',
-      Emailencodingkey = 'UTF-8',
-      FirstName = 'Nahush',
-      LastName = 'Testing',
-      languagelocalekey = 'en_US',
-      localesidkey = 'en_IN',
-      profileid = p.Id,
-      country = 'India',
-      timezonesidkey = 'Asia/Kolkata',
-      username = 'test_g@noemail.com'
-    );
-    insert activationUser;
+      User activationUser = new user(
+        alias = 'test123',
+        email = 'test123@noemail.com',
+        Emailencodingkey = 'UTF-8',
+        FirstName = 'Fname',
+        LastName = 'Testing',
+        languagelocalekey = 'en_US',
+        localesidkey = 'en_IN',
+        profileid = p.Id,
+        country = 'India',
+        timezonesidkey = 'Asia/Kolkata',
+        username = 'test_g@noemail.com'
+      );
+      insert activationUser;
 
-    PermissionSet ps = [
+      PermissionSet ps = [
+        SELECT Id
+        FROM PermissionSet
+        WHERE Name = 'CQ_Account_Admin'
+      ];
+      insert new PermissionSetAssignment(
+        AssigneeId = activationUser.Id,
+        PermissionSetId = ps.Id
+      );
+
+      User nonactivationUser = new user(
+        alias = 'test123',
+        email = 'test123@noemail.com',
+        Emailencodingkey = 'UTF-8',
+        FirstName = 'Fname',
+        LastName = 'Testing',
+        languagelocalekey = 'en_US',
+        localesidkey = 'en_IN',
+        profileid = p.Id,
+        country = 'India',
+        timezonesidkey = 'Asia/Kolkata',
+        username = 'nonactive@noemail.com'
+      );
+      insert nonactivationUser;
+    }
+
+    Test.startTest();
+    User permUser = [
       SELECT Id
-      FROM PermissionSet
-      WHERE Name = 'CQ Account Admin'
+      FROM User
+      WHERE username = 'test_g@noemail.com'
     ];
-    insert new PermissionSetAssignment(
-      AssigneeId = activationUser.Id,
-      PermissionSetId = ps.Id
-    );
 
     Account testAccount = new Account(
       Name = 'Account Name',
       AccountNumber = 'ACC012',
-      OwnerId = activationUser.Id
+      OwnerId = permUser.Id
     );
     insert testAccount;
+
+    User nonPermUser = [
+      SELECT Id
+      FROM User
+      WHERE username = 'nonactive@noemail.com'
+    ];
+    Account testAccount_nonActive = new Account(
+      Name = 'Account Name',
+      AccountNumber = 'ACC0123',
+      OwnerId = nonPermUser.Id
+    );
+    insert testAccount_nonActive;
+    Test.stopTest();
   }
 
   @isTest
   private static void testPermissionSetError() {
     // Test data setup
-    Id accountId = [SELECT Id FROM Account LIMIT 1]?.Id;
+    User contextUser = [
+      SELECT Id
+      FROM User
+      WHERE username = 'nonactive@noemail.com'
+    ];
+    Id accountId = [
+      SELECT Id
+      FROM Account
+      WHERE OwnerId = :contextUser.Id
+      LIMIT 1
+    ]
+    ?.Id;
 
     List<Task> reviewTaskList = [
       SELECT Id, Status
@@ -59,18 +107,19 @@ public with sharing class TaskTriggerHandler_Test {
     reviewTaskList[0].Description = 'Closing Task with comment';
     reviewTaskList[0].Status = 'Completed';
 
-    // Actual test
     Test.startTest();
-    try {
-      update reviewTaskList;
-    } catch (Exception e) {
-      System.assert(
-        e.getMessage()
-          .contains(
-            'You do not have the necessary permission to complete this task.'
-          ),
-        'Different Exception/Error thrown'
-      );
+    System.runAs(contextUser) {
+      try {
+        update reviewTaskList;
+      } catch (Exception e) {
+        System.assert(
+          e.getMessage()
+            .contains(
+              'You do not have the necessary permission to complete this task.'
+            ),
+          'Different Exception/Error thrown'
+        );
+      }
     }
     Test.stopTest();
   }
@@ -78,7 +127,18 @@ public with sharing class TaskTriggerHandler_Test {
   @IsTest
   static void testSuccessCompletion() {
     // Test data setup
-    Id accountId = [SELECT Id FROM Account LIMIT 1]?.Id;
+    User contextUser = [
+      SELECT Id
+      FROM User
+      WHERE username = 'test_g@noemail.com'
+    ];
+    Id accountId = [
+      SELECT Id
+      FROM Account
+      WHERE OwnerId = :contextUser.Id
+      LIMIT 1
+    ]
+    ?.Id;
 
     List<Task> reviewTaskList = [
       SELECT Id, Status
@@ -88,11 +148,6 @@ public with sharing class TaskTriggerHandler_Test {
     reviewTaskList[0].Description = 'Closing Task with comment';
     reviewTaskList[0].Status = 'Completed';
 
-    User contextUser = [
-      SELECT Id
-      FROM User
-      WHERE username = 'test_g@noemail.com'
-    ];
     Test.startTest();
     System.runAs(contextUser) {
       update reviewTaskList;
@@ -102,6 +157,7 @@ public with sharing class TaskTriggerHandler_Test {
     List<Account> updatedAccounts = [
       SELECT Id, Active__c, Description
       FROM Account
+      WHERE OwnerId = :contextUser.Id
     ];
     System.assertEquals(
       true,

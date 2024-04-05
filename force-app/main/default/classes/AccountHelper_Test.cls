@@ -18,7 +18,7 @@ public with sharing class AccountHelper_Test {
     @isTest
     private static void taskCreation_test() {
         // Test data setup
-        List<Account> accountsList = [SELECT Id FROM Account];
+        List<Account> accountsList = [SELECT Id, AccountNumber, OwnerId  FROM Account];
         Test.startTest();
         AccountHelper.createTaskForNewAccount(accountsList);
         Test.stopTest();

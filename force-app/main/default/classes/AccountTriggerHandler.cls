@@ -9,11 +9,6 @@ public with sharing class AccountTriggerHandler {
         this.triggerSize = triggerSize;
     }
 
-    @SuppressWarnings('PMD.EmptyStatementBlock')
-    public void beforeInsert(List<Account> newAccountsList) {
-
-    }
-
     /**
      * @description This is invoked for the After insert context on Account sObject
      * @param newAccountsList trigger.new

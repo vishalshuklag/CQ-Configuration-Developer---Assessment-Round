@@ -22,7 +22,7 @@ public with sharing class TaskHelper {
     }
 
     if (!accountsToActivate.isEmpty()) {
-      Database.insert(accountsToActivate, false);
+      Database.update(accountsToActivate, false);
     }
   }
 
